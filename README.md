@@ -1,5 +1,6 @@
 In questo progetto ho utilizzato spring webclient al posto di restTemplate poichè ho visto che ormai è deprecato.
 Ho inoltre costruito un GlobalExceptionHandler per gestire i tipi di risposta e nel caso personalizzzare e aggiungere nuovi errori
+Ho scritto unitTest per le varie classi non facendo integration test poichè  non richiesti
 ------
 Il metodo getBalance fa una chiamata get all'api esposta e  ritorna il balance non ho fatto tornare altri dati ma si potrebbe poi scegliere magari di far tornare la currency ad esempio.
 Hedgecase che è discutibile se gestirlo o meno è in caso di balance negativo cosa scegliere di fare. io non l'ho gestito.
