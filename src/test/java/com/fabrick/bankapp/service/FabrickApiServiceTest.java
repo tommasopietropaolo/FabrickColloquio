@@ -2,6 +2,9 @@ package com.fabrick.bankapp.service;
 
 import com.fabrick.bankapp.client.FabrickResponse;
 import com.fabrick.bankapp.dto.balanceDto.Balance;
+import com.fabrick.bankapp.dto.transactionDto.Transaction;
+import com.fabrick.bankapp.dto.transactionDto.TransactionType;
+import com.fabrick.bankapp.dto.transactionDto.Transactions;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -13,6 +16,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -86,6 +90,52 @@ class FabrickApiServiceTest {
 
     }
 
+    @Test
+    void testGetTransactionsReturningCorrectValues() throws InterruptedException {
+        //given
+        List<Transaction> transactionList = new ArrayList<>();
+        Transaction transaction1 = new Transaction("1", "OP1", "2023-01-01", "2023-01-01",
+                new TransactionType("dummy", "123"), 100.0, "EUR", "Deposit transaction");
+        transactionList.add(transaction1);
+        Transactions transactions = new Transactions(transactionList);
+        FabrickResponse<Transactions> expectedResponse = new FabrickResponse<>("OK", new ArrayList<>(), transactions);
+        givenExpectedResponse(expectedResponse);
+        String expectedUrl = "/api/gbs/banking/v4.0/accounts/123456/transactions?fromAccountingDate=2019-01-01&toAccountingDate=2019-12-01";
+        //when
+        List<Transaction> response = victim.getTransactions("2019-01-01", "2019-12-01");
+        //then
+        assertThat(response).usingRecursiveComparison().isEqualTo(expectedResponse.getPayload().getList());
+
+        RecordedRequest mockRequest = mockFabrickServer.takeRequest();
+        //then
+        assertThat(mockRequest.getPath()).isEqualTo(expectedUrl);
+    }
+
+    @Test
+    void testGetTransactionsShouldThrowIllegalArgumentExceptionsWhenDatesAreNotValid() throws InterruptedException {
+        assertThatThrownBy(() -> victim.getTransactions("2022-01-01", "2021-01-01"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("La data di fine non può essere prima della data di inizio.");
+    }
+
+    @Test
+    void testGetTransactionsShouldThrowRunTimeExceptionAndLogErrorIfApiIsThrowing() throws InterruptedException {
+        //given
+        final String expectedError = "Fabrick getTransactions service api error, check logs for detail: ";
+        mockFabrickServer.enqueue(
+                new MockResponse().setResponseCode(403)
+                        .setHeader("content-type", "application/json")
+                        .setBody("{message: 'hello world'}"));
+
+        assertThatThrownBy(() -> victim.getTransactions("2021-01-01", "2021-12-01"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage(expectedError);
+
+        String expectedUrl = "/api/gbs/banking/v4.0/accounts/123456/transactions?fromAccountingDate=2021-01-01&toAccountingDate=2021-12-01";
+        RecordedRequest mockRequest = mockFabrickServer.takeRequest();
+        //then
+        assertThat(mockRequest.getPath()).isEqualTo(expectedUrl);
+    }
 
     //configuration  server mock
     void givenExpectedResponse(Object expectedResponse) {

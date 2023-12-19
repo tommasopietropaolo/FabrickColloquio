@@ -22,5 +22,13 @@ public class AccountController {
         return fabrickApiService.getBalance();
     }
 
+    @GetMapping("/transactionList")
+    public List<Transaction> getTransactions(
+            @RequestParam String fromAccountingDate,
+            @RequestParam String toAccountingDate) {
+        return fabrickApiService.getTransactions(fromAccountingDate, toAccountingDate);
+
+    }
+
 
 }

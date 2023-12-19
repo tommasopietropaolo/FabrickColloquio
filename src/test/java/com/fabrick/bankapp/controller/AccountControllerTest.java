@@ -1,6 +1,8 @@
 package com.fabrick.bankapp.controller;
 
 import com.fabrick.bankapp.dto.balanceDto.Balance;
+import com.fabrick.bankapp.dto.transactionDto.Transaction;
+import com.fabrick.bankapp.dto.transactionDto.TransactionType;
 import com.fabrick.bankapp.service.FabrickApiService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,9 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -60,5 +65,54 @@ class AccountControllerTest {
         verify(mockFabrickApiService).getBalance();
 
     }
+
+    @Test
+    void getTransactionsShouldReturn200AndValueFromService() throws Exception {
+        String fromAccountingDateValue = "2011-01-01";
+        String toAccountingDateValue = "2011-12-01";
+        List<Transaction> expectedTtransactionList = new ArrayList<>();
+        Transaction transaction1 = new Transaction("1", "OP1", "2023-01-01", "2023-01-01",
+                new TransactionType("dummy", "123"), 100.0, "EUR", "Deposit transaction");
+        expectedTtransactionList.add(transaction1);
+        when(mockFabrickApiService.getTransactions(fromAccountingDateValue, toAccountingDateValue)).thenReturn(expectedTtransactionList);
+
+        String expectedValue = new ObjectMapper().writeValueAsString(expectedTtransactionList);
+
+        ResultActions resultActions = this.mockMvc.perform(get("https://localhost:8080/transactionList")
+                .param("fromAccountingDate", fromAccountingDateValue)
+                .param("toAccountingDate", toAccountingDateValue));
+
+        resultActions.andExpect(status().isOk());
+        MvcResult result = resultActions.andReturn();
+        String responseBody = result.getResponse().getContentAsString();
+        assertThat(responseBody).isEqualTo(expectedValue);
+    }
+
+    @Test
+    void getTransactionsShouldReturnIllegalArgExceptionIfServiceIsThrowingTheException() throws Exception {
+
+        when(mockFabrickApiService.getTransactions("2011-01-01", "2011-12-01")).thenThrow(new IllegalArgumentException("dummy exception"));
+
+        this.mockMvc.perform(get("https://localhost:8080/transactionList")
+                .param("fromAccountingDate", "2011-01-01")
+                .param("toAccountingDate", "2011-12-01"));
+        this.mockMvc
+                .perform(get("https://localhost:8080/transactionList"))
+                .andExpect(status().is4xxClientError());
+
+    }
+    
+    @Test
+    void getTransactionsShouldReturnExceptionCodeFromService() throws Exception {
+
+        when(mockFabrickApiService.getTransactions("2011-01-01", "2011-12-01")).thenThrow(new RuntimeException("dummy exception"));
+
+        this.mockMvc.perform(get("https://localhost:8080/transactionList")
+                        .param("fromAccountingDate", "2011-01-01")
+                        .param("toAccountingDate", "2011-12-01"))
+                .andExpect(status().is5xxServerError());
+        verify(mockFabrickApiService).getTransactions("2011-01-01", "2011-12-01");
+    }
+
 
 }
