@@ -19,7 +19,7 @@ public class AccountController {
 
     @GetMapping("/saldo")
     public Balance getBalance() {
-        return new Balance(21.1);
+        return fabrickApiService.getBalance();
     }
 
 
