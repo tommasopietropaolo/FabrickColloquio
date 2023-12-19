@@ -1,8 +1,10 @@
 package com.fabrick.bankapp.controller;
 
+import com.fabrick.bankapp.client.FabrickResponse;
 import com.fabrick.bankapp.dto.balanceDto.Balance;
 import com.fabrick.bankapp.dto.transactionDto.Transaction;
 import com.fabrick.bankapp.dto.transactionDto.TransactionType;
+import com.fabrick.bankapp.dto.transferDto.*;
 import com.fabrick.bankapp.service.FabrickApiService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -114,5 +116,55 @@ class AccountControllerTest {
         verify(mockFabrickApiService).getTransactions("2011-01-01", "2011-12-01");
     }
 
+    @Test
+    void makeTransferShouldReturnExceptionCodeFromService() throws Exception {
 
+        FabrickResponse<Transfer> expectedResponse = new FabrickResponse<>("OK", new ArrayList<>(), new Transfer("dummyId"));
+        Account accountDummy = new Account("123", "456");
+        Address addressDummy = new Address("dummy", "756", "dummycity");
+        NaturalPersonBeneficiary naturalPersonBeneficiaryDummy = new NaturalPersonBeneficiary("fiscalCode1",
+                "fiscalCode2",
+                "fiscalCode3",
+                "fiscalCode4",
+                "fiscalCode5");
+        LegalPersonBeneficiary legalPersonBeneficiaryDummy = new LegalPersonBeneficiary("fiscalCodeValue",
+                "legalRepresentativeFiscalCodeValue");
+        String executionDate="2000-01-01";
+        String uri="dummyUri";
+        String description="dummyDescription";
+        double amount=80.0;
+        String currency="EUR";
+        boolean isUrgent=false;
+        boolean isInstant=false;
+        String feeType="dummyType";
+        String feeAccountId="123";
+        TaxRelief taxRelief=new TaxRelief("123",
+                true,
+                "ABC123",
+                "NaturalPerson",
+                naturalPersonBeneficiaryDummy,
+                legalPersonBeneficiaryDummy);
+
+        TransferRequest request = new TransferRequest(new Creditor("dummy name", accountDummy, addressDummy),
+                executionDate,
+                uri,
+                description,
+                amount,
+                currency,
+                isUrgent,
+                isInstant,
+                feeType,
+                feeAccountId,
+                taxRelief);
+        when(mockFabrickApiService.makeTransfer(request)).thenReturn(expectedResponse.getPayload().getMoneyTransferId());
+
+        String expectedValue = new ObjectMapper().writeValueAsString(expectedResponse);
+
+        ResultActions resultActions = this.mockMvc.perform(get("https://localhost:8080/transfer")
+                .param("X-Time-Zone", "Europe/Rome"));
+        resultActions.andExpect(status().is4xxClientError());
+
+    }
+
+    //the  200 ok  test controller i cant perform  without correct credential
 }
