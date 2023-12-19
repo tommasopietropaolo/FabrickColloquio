@@ -4,12 +4,15 @@ import com.fabrick.bankapp.client.FabrickResponse;
 import com.fabrick.bankapp.dto.balanceDto.Balance;
 import com.fabrick.bankapp.dto.transactionDto.Transaction;
 import com.fabrick.bankapp.dto.transactionDto.Transactions;
+import com.fabrick.bankapp.dto.transferDto.Transfer;
+import com.fabrick.bankapp.dto.transferDto.TransferRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -28,7 +31,7 @@ public class FabrickApiService {
             @Value("${fabrick.api.base-url}") String baseUrl,
             @Value("${fabrick.api.api-key}") String apiKey,
             @Value("${fabrick.api.account-id}") Long accountId,
-            @Value("${fabrick.api.auth-schema}") String authSchema){
+            @Value("${fabrick.api.auth-schema}") String authSchema) {
         this.webClient = webClientBuilder.baseUrl(baseUrl)
                 .defaultHeader("Auth-Schema", authSchema)
                 .defaultHeader("Api-Key", apiKey)
@@ -38,6 +41,7 @@ public class FabrickApiService {
         this.accountId = accountId;
 
     }
+
     //Display Balance
     public Balance getBalance() throws RuntimeException {
         FabrickResponse<Balance> response;
@@ -87,6 +91,33 @@ public class FabrickApiService {
 
         }
     }
+
+    //pass a  request get  transfer id
+    public String makeTransfer(TransferRequest transferRequest) {
+
+        try {
+
+            FabrickResponse<Transfer> transferResponse;
+            transferResponse = webClient.post()
+                    .uri(BASE_PATH + "/{accountId}/payments/money-transfers", accountId)
+                    .header("X-Time-Zone", "Europe/Rome")
+                    .bodyValue(transferRequest)
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<FabrickResponse<Transfer>>() {
+                    })
+                    .block();
+
+            return transferResponse.getPayload().getMoneyTransferId();
+
+        } catch (WebClientResponseException ex) {
+            String message = ex.getResponseBodyAsString();
+            throw new RuntimeException(message);
+        }
+
+    }
+
+
+
     //Logic to validate data
     private boolean areValidDates(String startDate, String endDate) {
         LocalDate start = LocalDate.parse(startDate);

@@ -5,6 +5,8 @@ import com.fabrick.bankapp.dto.balanceDto.Balance;
 import com.fabrick.bankapp.dto.transactionDto.Transaction;
 import com.fabrick.bankapp.dto.transactionDto.TransactionType;
 import com.fabrick.bankapp.dto.transactionDto.Transactions;
+import com.fabrick.bankapp.dto.transferDto.Transfer;
+import com.fabrick.bankapp.dto.transferDto.TransferRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -137,6 +139,53 @@ class FabrickApiServiceTest {
         assertThat(mockRequest.getPath()).isEqualTo(expectedUrl);
     }
 
+    @Test
+    void testMakeTransferShouldThrowAnErrorIFServiceIsFailing() throws InterruptedException {
+        final String expectedError = "{\"status\": \"KO\",\"errors\":[{\"code\": \"API000\",\"description\": " +
+                "\"it.sella.pagamenti.servizibonifico.exception.ServiziInvioBonificoSubsystemException: " +
+                "it.sella.pagamenti.sottosistemi.SottosistemiException: Errore tecnico CONTO 45685475:Conto 45685475 non esiste\",\"params\": \"\"}],\"payload\":{}}";
+        mockFabrickServer.enqueue(
+                new MockResponse().setResponseCode(400)
+                        .setHeader("content-type", "application/json")
+                        .setBody(expectedError));
+
+        TransferRequest request = new TransferRequest();
+
+
+        assertThatThrownBy(() -> victim.makeTransfer(request))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage(expectedError);
+
+        RecordedRequest mockRequest = mockFabrickServer.takeRequest();
+        assertThat(mockRequest.getPath()).isEqualTo(String.format("/api/gbs/banking/v4.0/accounts/%s/payments/money-transfers", DUMMY_ACCOUNT_ID));
+        assertThat(mockRequest.getMethod()).isEqualTo("POST");
+        assertThat(mockRequest.getHeader("X-Time-Zone")).isEqualTo("Europe/Rome");
+        assertThat(mockRequest.getHeader("Api-Key")).isEqualTo(DUMMY_API_KEY);
+        assertThat(mockRequest.getHeader("Auth-Schema")).isEqualTo(DUMMY_SCHEMA);
+        assertThat(mockRequest.getHeader("Content-Type")).isEqualTo("application/json");
+
+    }
+
+    @Test
+    void testMakeTransferShouldReturnCorrectValues() throws InterruptedException {
+        //given
+        FabrickResponse<Transfer> expectedResponse = new FabrickResponse<>("OK", new ArrayList<>(), new Transfer("dummy"));
+        givenExpectedResponse(expectedResponse);
+        String expectedUrl = String.format("/api/gbs/banking/v4.0/accounts/%s/payments/money-transfers", DUMMY_ACCOUNT_ID);
+        TransferRequest request = new TransferRequest();
+        //when
+        String response = victim.makeTransfer(request);
+        RecordedRequest mockRequest = mockFabrickServer.takeRequest();
+        assertThat(mockRequest.getPath()).isEqualTo(String.format("/api/gbs/banking/v4.0/accounts/%s/payments/money-transfers", DUMMY_ACCOUNT_ID));
+        assertThat(mockRequest.getMethod()).isEqualTo("POST");
+        assertThat(mockRequest.getHeader("X-Time-Zone")).isEqualTo("Europe/Rome");
+        assertThat(mockRequest.getHeader("Api-Key")).isEqualTo(DUMMY_API_KEY);
+        assertThat(mockRequest.getHeader("Auth-Schema")).isEqualTo(DUMMY_SCHEMA);
+        assertThat(mockRequest.getHeader("Content-Type")).isEqualTo("application/json");
+        //then
+        assertThat(response).isEqualTo(expectedResponse.getPayload().getMoneyTransferId());
+
+    }
     //configuration  server mock
     void givenExpectedResponse(Object expectedResponse) {
         try {

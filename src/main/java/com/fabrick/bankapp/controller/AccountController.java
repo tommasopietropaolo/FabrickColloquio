@@ -2,6 +2,7 @@ package com.fabrick.bankapp.controller;
 
 import com.fabrick.bankapp.dto.balanceDto.Balance;
 import com.fabrick.bankapp.dto.transactionDto.Transaction;
+import com.fabrick.bankapp.dto.transferDto.TransferRequest;
 import com.fabrick.bankapp.service.FabrickApiService;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +30,9 @@ public class AccountController {
         return fabrickApiService.getTransactions(fromAccountingDate, toAccountingDate);
 
     }
-
+    @PostMapping(value = "/transfer")
+    public String makeTransfer(@RequestBody TransferRequest transferRequest)  {
+        return fabrickApiService.makeTransfer(transferRequest);
+    }
 
 }

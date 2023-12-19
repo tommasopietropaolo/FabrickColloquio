@@ -101,7 +101,7 @@ class AccountControllerTest {
                 .andExpect(status().is4xxClientError());
 
     }
-    
+
     @Test
     void getTransactionsShouldReturnExceptionCodeFromService() throws Exception {
 
